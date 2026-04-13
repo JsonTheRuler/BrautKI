@@ -1,0 +1,31 @@
+# Node
+node_modules/
+dist/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Env/secrets
+.env
+.env.*
+!.env.example
+
+# Local runtime artifacts
+runtime/
+*.log
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Cursor/agent generated metadata
+.cursor/
+agent-tools/
+terminals/

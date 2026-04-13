@@ -1,0 +1,48 @@
+company:
+  name: AI Ready
+  timezone: Europe/Oslo
+
+paperclip:
+  base_url: http://localhost:8090
+  scheduler:
+    daily_standup_cron: "0 8 * * 1-5"
+
+roles:
+  - role_id: ceo-agent
+    display_name: CEO Agent
+    endpoint: http://host.docker.internal:8010/agents/inbox/run
+    task_types:
+      - executive-priorities
+      - inbox-signal-summary
+    payload_template:
+      email_limit: 10
+
+  - role_id: sales-agent
+    display_name: Sales Agent
+    endpoint: http://host.docker.internal:8010/agents/crm/run
+    task_types:
+      - lead-qualification
+      - outreach-drafting
+
+  - role_id: ops-agent
+    display_name: Ops Agent
+    endpoint: http://host.docker.internal:8010/agents/inbox/run
+    task_types:
+      - operations-triage
+      - blocker-escalation
+    payload_template:
+      email_limit: 15
+
+  - role_id: marketing-agent
+    display_name: Marketing Agent
+    endpoint: http://host.docker.internal:8010/agents/marketing/run
+    task_types:
+      - campaign-planning
+      - content-drafting
+
+  - role_id: delivery-agent
+    display_name: Delivery Agent
+    endpoint: http://host.docker.internal:8010/agents/delivery/run
+    task_types:
+      - report-drafting
+      - recommendation-design

@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Ready Admin Console</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #141c33;
+        --panel-alt: #0d1428;
+        --border: #253154;
+        --text: #e8edf8;
+        --muted: #9db0d6;
+        --ok: #56d47e;
+        --bad: #ff6b6b;
+        --warn: #f3c96a;
+      }
+      body {
+        font-family: Inter, Segoe UI, Arial, sans-serif;
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .wrap { max-width: 1220px; margin: 0 auto; padding: 24px; }
+      h1 { margin: 0; }
+      h2 { margin-top: 0; }
+      .small { color: var(--muted); font-size: 12px; }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 12px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+      }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+      .health-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 10px;
+      }
+      .health-item {
+        background: var(--panel-alt);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px;
+      }
+      .status {
+        display: inline-block;
+        font-size: 11px;
+        border-radius: 999px;
+        padding: 2px 8px;
+        margin-left: 6px;
+      }
+      .status-ok { background: rgba(86, 212, 126, 0.2); color: var(--ok); }
+      .status-bad { background: rgba(255, 107, 107, 0.2); color: var(--bad); }
+      button {
+        background: #2f6dff;
+        border: 0;
+        color: #fff;
+        padding: 9px 12px;
+        border-radius: 7px;
+        cursor: pointer;
+      }
+      button.secondary { background: #29417c; }
+      button:hover { filter: brightness(1.08); }
+      pre {
+        background: var(--panel-alt);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        overflow: auto;
+        min-height: 260px;
+        max-height: 520px;
+      }
+      textarea {
+        width: 100%;
+        min-height: 100px;
+        background: var(--panel-alt);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+      }
+      select {
+        background: var(--panel-alt);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 8px;
+      }
+      a { color: #8db4ff; text-decoration: none; }
+      .links a { display: block; margin-bottom: 6px; }
+      .ok { color: var(--ok); }
+      .bad { color: var(--bad); }
+      .warn { color: var(--warn); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <div>
+          <h1>AI Ready Admin Console</h1>
+          <p class="small">Monitor integrations, run agent workflows, and inspect live output from one control plane.</p>
+        </div>
+        <div>
+          <button class="secondary" onclick="refreshHealth()">Refresh Health</button>
+          <button class="secondary" onclick="toggleAutoRefresh()"><span id="autoLabel">Auto-refresh: OFF</span></button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <div class="card">
+            <h2>Service Health</h2>
+            <div class="small" id="healthMeta">Loading...</div>
+            <div id="healthContainer" class="health-grid"></div>
+          </div>
+          <div class="card">
+            <h2>Run Actions</h2>
+            <div class="row">
+              <button onclick="runAction('runInbox')">Run Inbox</button>
+              <button onclick="runAction('runCrm')">Run CRM</button>
+              <button onclick="runAction('runMarketing')">Run Marketing</button>
+              <button onclick="runAction('runDelivery')">Run Delivery</button>
+              <button onclick="runAction('runCouncilDemo')">Run Council Demo</button>
+            </div>
+            <label class="small" for="payloadBox">Optional payload (JSON, used for supported actions):</label>
+            <textarea id="payloadBox" placeholder='{"email_limit": 15}'></textarea>
+          </div>
+          <div class="card">
+            <h2>Action Result</h2>
+            <pre id="resultBox">No action run yet.</pre>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <h2>Quick Links</h2>
+            <div class="links">
+              <a href="/health" target="_blank">Gateway Health</a>
+              <a href="http://localhost:8010/health" target="_blank">Agents Health</a>
+              <a href="http://localhost:8088/health" target="_blank">Council Health</a>
+              <a href="http://localhost:5678" target="_blank">n8n Dashboard</a>
+              <a href="http://localhost:11500/health" target="_blank">Gemma Wrapper</a>
+              <a href="http://localhost:11600/health" target="_blank">Karpathy Wrapper</a>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Notes</h2>
+            <ul class="small">
+              <li>Green means endpoint reachable and healthy.</li>
+              <li>Yellow/red usually means service down or model not ready.</li>
+              <li>Local Gemma may take time when model is downloading.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let autoTimer = null;
+
+      function parsePayload() {
+        const raw = document.getElementById("payloadBox").value.trim();
+        if (!raw) return undefined;
+        return JSON.parse(raw);
+      }
+
+      async function refreshHealth() {
+        const container = document.getElementById("healthContainer");
+        const meta = document.getElementById("healthMeta");
+        container.innerHTML = `<div class="small">Checking integrations...</div>`;
+        try {
+          const response = await fetch("/admin/integrations/health");
+          const body = await response.json();
+          meta.textContent = `Last updated: ${new Date(body.generatedAt).toLocaleString()}`;
+          container.innerHTML = body.checks.map((c) => `
+            <div class="health-item">
+              <div><strong>${c.name}</strong> <span class="status ${c.ok ? "status-ok" : "status-bad"}">${c.ok ? "UP" : "DOWN"}</span></div>
+              <div class="small">status=${c.status} | latency=${c.latencyMs}ms</div>
+              <div class="small">${c.base}</div>
+              ${c.error ? `<div class="small bad">${c.error}</div>` : ""}
+            </div>
+          `).join("");
+        } catch (error) {
+          container.innerHTML = `<span class="bad">Failed to fetch health: ${error.message}</span>`;
+        }
+      }
+
+      async function runAction(action) {
+        const box = document.getElementById("resultBox");
+        box.textContent = "Running action...";
+        try {
+          const payload = parsePayload();
+          const response = await fetch("/admin/actions/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action, payload })
+          });
+          const body = await response.json();
+          box.textContent = JSON.stringify(body, null, 2);
+        } catch (error) {
+          box.textContent = `Action failed: ${error.message}`;
+        }
+      }
+
+      function toggleAutoRefresh() {
+        const label = document.getElementById("autoLabel");
+        if (autoTimer) {
+          clearInterval(autoTimer);
+          autoTimer = null;
+          label.textContent = "Auto-refresh: OFF";
+          return;
+        }
+        autoTimer = setInterval(refreshHealth, 15000);
+        label.textContent = "Auto-refresh: ON (15s)";
+        refreshHealth();
+      }
+
+      refreshHealth();
+    </script>
+  </body>
+</html>

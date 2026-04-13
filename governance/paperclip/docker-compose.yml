@@ -1,0 +1,10 @@
+services:
+  paperclip:
+    image: ghcr.io/paperclip-ai/paperclip:latest
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      PAPERCLIP_CONFIG: /app/config/paperclip-org.yaml
+    volumes:
+      - ./paperclip-org.yaml:/app/config/paperclip-org.yaml:ro
