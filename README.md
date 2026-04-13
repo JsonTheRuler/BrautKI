@@ -1,4 +1,4 @@
-# AI Ready Backend Infrastructure
+# BrautKI
 
 This repository contains the backend and AI infrastructure stack for AI Ready.
 
@@ -10,7 +10,3 @@ This repository contains the backend and AI infrastructure stack for AI Ready.
 - `orchestrator/`: n8n and related orchestration runtime configuration.
 - `governance/`: LLM Council and Paperclip integration layers.
 - `local-models/`: Local model runtimes and wrappers (Gemma, llm.c).
-
-## Current Status
-
-Phase 0 and Phase 1 are scaffolded and the gateway is implemented.
