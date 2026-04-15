@@ -3,6 +3,7 @@ import express from "express";
 import path from "node:path";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
+import { Pool } from "pg";
 import { z } from "zod";
 import { loadModelsConfig } from "./config/loadModels.js";
 import { getMetricsSnapshot, incMetric } from "./logging/metrics.js";
@@ -140,6 +141,14 @@ const integrationTargets = {
 };
 
 const offeringsFilePath = path.resolve(process.cwd(), "data", "offerings.json");
+const offeringsDbUrl = process.env.OFFERINGS_DATABASE_URL ?? process.env.POSTGRES_URL ?? "";
+const usingOfferingsDb = offeringsDbUrl.trim().length > 0;
+const offeringsPool = usingOfferingsDb
+  ? new Pool({
+      connectionString: offeringsDbUrl,
+      ssl: offeringsDbUrl.includes("localhost") ? undefined : { rejectUnauthorized: false }
+    })
+  : null;
 
 type OfferingRecord = {
   id: string;
@@ -213,8 +222,8 @@ function normalizeOfferings(items: unknown[]): OfferingRecord[] {
     .map((item, index) => ({ ...item, order: index }));
 }
 
-async function ensureOfferingsFile(): Promise<void> {
-  const initial = [
+function getDefaultOfferings(): OfferingRecord[] {
+  return normalizeOfferings([
     {
       id: "video-repurposing-pipeline",
       title: "Video Repurposing Pipeline",
@@ -325,7 +334,11 @@ async function ensureOfferingsFile(): Promise<void> {
       archived: false,
       updatedAt: new Date().toISOString()
     }
-  ];
+  ]);
+}
+
+async function ensureOfferingsFile(): Promise<void> {
+  const initial = getDefaultOfferings();
 
   try {
     await fs.access(offeringsFilePath);
@@ -335,7 +348,95 @@ async function ensureOfferingsFile(): Promise<void> {
   }
 }
 
+async function ensureOfferingsTable(): Promise<void> {
+  if (!offeringsPool) return;
+  await offeringsPool.query(`
+    CREATE TABLE IF NOT EXISTS offerings (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      pricing TEXT NOT NULL,
+      tier TEXT NOT NULL,
+      deliverables JSONB NOT NULL,
+      cta_label TEXT NOT NULL,
+      cta_url TEXT NOT NULL,
+      status TEXT NOT NULL,
+      sort_order INTEGER NOT NULL,
+      archived BOOLEAN NOT NULL DEFAULT FALSE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  const countResult = await offeringsPool.query<{ count: string }>("SELECT COUNT(*)::text AS count FROM offerings");
+  const count = Number(countResult.rows[0]?.count ?? "0");
+  if (count > 0) return;
+
+  const defaults = getDefaultOfferings();
+  for (const item of defaults) {
+    await offeringsPool.query(
+      `INSERT INTO offerings
+        (id, title, description, pricing, tier, deliverables, cta_label, cta_url, status, sort_order, archived, updated_at)
+       VALUES
+        ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12)`,
+      [
+        item.id,
+        item.title,
+        item.description,
+        item.pricing,
+        item.tier,
+        JSON.stringify(item.deliverables),
+        item.ctaLabel,
+        item.ctaUrl,
+        item.status,
+        item.order,
+        item.archived,
+        item.updatedAt
+      ]
+    );
+  }
+}
+
 async function readOfferings(): Promise<OfferingRecord[]> {
+  if (offeringsPool) {
+    await ensureOfferingsTable();
+    const result = await offeringsPool.query<{
+      id: string;
+      title: string;
+      description: string;
+      pricing: string;
+      tier: string;
+      deliverables: unknown;
+      cta_label: string;
+      cta_url: string;
+      status: string;
+      sort_order: number;
+      archived: boolean;
+      updated_at: string;
+    }>(
+      `SELECT
+        id, title, description, pricing, tier, deliverables, cta_label, cta_url, status, sort_order, archived, updated_at
+       FROM offerings
+       ORDER BY sort_order ASC, id ASC`
+    );
+    const mapped = result.rows.map((row, index) => ({
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      pricing: row.pricing,
+      tier: row.tier === "growth" || row.tier === "scale" ? row.tier : "starter",
+      deliverables: Array.isArray(row.deliverables)
+        ? row.deliverables.map((x) => String(x)).filter((x) => x.length > 0)
+        : ["Initial delivery scope workshop"],
+      ctaLabel: row.cta_label,
+      ctaUrl: row.cta_url,
+      status: row.status === "live" ? "live" : "new",
+      order: Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : index,
+      archived: Boolean(row.archived),
+      updatedAt: row.updated_at
+    }));
+    return normalizeOfferings(mapped);
+  }
+
   await ensureOfferingsFile();
   const raw = await fs.readFile(offeringsFilePath, "utf-8");
   const parsed = JSON.parse(raw);
@@ -346,7 +447,42 @@ async function readOfferings(): Promise<OfferingRecord[]> {
 }
 
 async function writeOfferings(items: OfferingRecord[]): Promise<void> {
-  await fs.writeFile(offeringsFilePath, JSON.stringify(normalizeOfferings(items), null, 2), "utf-8");
+  const normalized = normalizeOfferings(items);
+  if (offeringsPool) {
+    await ensureOfferingsTable();
+    await offeringsPool.query("BEGIN");
+    try {
+      await offeringsPool.query("DELETE FROM offerings");
+      for (const item of normalized) {
+        await offeringsPool.query(
+          `INSERT INTO offerings
+            (id, title, description, pricing, tier, deliverables, cta_label, cta_url, status, sort_order, archived, updated_at)
+           VALUES
+            ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12)`,
+          [
+            item.id,
+            item.title,
+            item.description,
+            item.pricing,
+            item.tier,
+            JSON.stringify(item.deliverables),
+            item.ctaLabel,
+            item.ctaUrl,
+            item.status,
+            item.order,
+            item.archived,
+            item.updatedAt
+          ]
+        );
+      }
+      await offeringsPool.query("COMMIT");
+      return;
+    } catch (error) {
+      await offeringsPool.query("ROLLBACK");
+      throw error;
+    }
+  }
+  await fs.writeFile(offeringsFilePath, JSON.stringify(normalized, null, 2), "utf-8");
 }
 
 const requestSchema = z.object({

@@ -35,6 +35,7 @@ Security flags:
 - `SERVICE_SHARED_KEY=<key>` used when gateway calls agents/council services
 - `DOWNSTREAM_TIMEOUT_MS=20000` timeout for downstream service calls
 - `DOWNSTREAM_RETRIES=2` retry attempts for transient failures
+- `OFFERINGS_DATABASE_URL` (or `POSTGRES_URL`) to persist offerings in Postgres (recommended on Vercel)
 
 ## 2) Run
 
@@ -98,6 +99,11 @@ The gateway now serves a lightweight admin page:
 It provides:
 - integration health checks (gateway, agents, council, n8n, local model wrappers)
 - one-click action triggers for key agent and council flows
+- offerings catalog CRUD (create/update/archive/restore/reorder)
+
+Offerings persistence modes:
+- Postgres mode (recommended): set `OFFERINGS_DATABASE_URL` or `POSTGRES_URL`
+- File fallback mode (local/dev): `gateway/data/offerings.json`
 
 Optional integration env vars:
 - `AGENTS_BASE_URL` (default `http://localhost:8010`)
