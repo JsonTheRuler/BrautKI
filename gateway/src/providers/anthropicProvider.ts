@@ -1,5 +1,6 @@
 import type { ChatCompletionRequest, ChatCompletionResponse } from "../types/openai.js";
 import type { ModelConfig, Provider } from "./base.js";
+import { fetchWithRetry } from "./httpClient.js";
 
 export class AnthropicProvider implements Provider {
   async complete(req: ChatCompletionRequest, cfg: ModelConfig): Promise<ChatCompletionResponse> {
@@ -11,7 +12,7 @@ export class AnthropicProvider implements Provider {
       .filter((msg) => msg.role !== "system")
       .map((msg) => ({ role: msg.role === "assistant" ? "assistant" : "user", content: msg.content }));
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

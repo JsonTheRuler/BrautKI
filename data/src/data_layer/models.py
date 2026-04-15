@@ -42,6 +42,7 @@ class Email(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     from_address: Mapped[str] = mapped_column(String(255), nullable=False)
     to_address: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     subject: Mapped[str] = mapped_column(String(500), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     labels: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)

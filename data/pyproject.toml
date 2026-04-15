@@ -17,3 +17,12 @@ dependencies = [
   "pydantic>=2.7.0",
   "python-dotenv>=1.0.1"
 ]
+
+[project.scripts]
+data-etl-emails = "data_layer.etl_emails:run"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

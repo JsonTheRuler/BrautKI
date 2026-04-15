@@ -1,0 +1,128 @@
+[
+  {
+    "id": "video-repurposing-pipeline",
+    "title": "Video Repurposing Pipeline",
+    "description": "Input one YouTube/video URL, output ready-to-schedule short-form clips with hooks and platform copy.",
+    "pricing": "Typical offer: ~500 USD/month.",
+    "status": "live"
+  },
+  {
+    "id": "lead-enrichment-agent",
+    "title": "Lead Enrichment Agent",
+    "description": "Ingest raw company lists, enrich public web signals, score ICP fit, and route qualified leads to CRM.",
+    "pricing": "Use case: outbound teams and agencies.",
+    "status": "live"
+  },
+  {
+    "id": "competitive-intelligence-pipeline",
+    "title": "Competitive Intelligence Pipeline",
+    "description": "Scheduled competitor monitoring with diffs on pricing, features, hiring and messaging.",
+    "pricing": "Typical offer: 1,000-2,500 USD/month.",
+    "status": "live"
+  },
+  {
+    "id": "invoice-document-extraction",
+    "title": "Invoice & Document Extraction",
+    "description": "Extract structured fields from invoices, receipts, contracts and POs with schema validation.",
+    "pricing": "Pricing model: per-document or monthly package.",
+    "status": "live"
+  },
+  {
+    "id": "knowledge-base-support-automation",
+    "title": "Knowledge Base & Support Automation",
+    "description": "Detect documentation gaps from support tickets and auto-draft docs in your style.",
+    "pricing": "Typical model: setup fee + monthly retainer.",
+    "status": "live"
+  },
+  {
+    "id": "ai-compliance-monitoring-smb",
+    "title": "AI Compliance Monitoring for SMB",
+    "description": "Monitor regulatory changes and produce concrete action steps for small business teams.",
+    "pricing": "Typical offer: 300-500 USD/month.",
+    "status": "new"
+  },
+  {
+    "id": "ai-proposal-writing",
+    "title": "AI-Powered Proposal Writing",
+    "description": "Turn discovery notes into polished, branded proposals using prior proposal context.",
+    "pricing": "Pricing: 150-300 USD/month or ~50 USD/proposal.",
+    "status": "new"
+  },
+  {
+    "id": "ecommerce-listing-quality-control",
+    "title": "E-Commerce Listing Quality Control",
+    "description": "Audit full product catalogs, flag errors, fill missing attributes, and standardize SEO descriptions.",
+    "pricing": "Pricing: 500-2,000 USD per audit + retainer.",
+    "status": "new"
+  },
+  {
+    "id": "industry-specific-ai-training-packages",
+    "title": "Industry-Specific AI Training Packages",
+    "description": "Deploy verticalized AI setups with domain context, prompt libraries, and workflow templates.",
+    "pricing": "Pricing: 2,000-5,000 USD setup + 200-500 USD/month.",
+    "status": "new"
+  },
+  {
+    "id": "local-competitor-intelligence",
+    "title": "Local Competitor Intelligence",
+    "description": "Track local competitors across pricing, services, reviews and social activity with weekly briefs.",
+    "pricing": "Pricing: 200-400 USD/month.",
+    "status": "new"
+  },
+  {
+    "id": "ai-workflow-auditing-service",
+    "title": "AI Workflow Auditing as a Service",
+    "description": "Audit AI workflows, identify quality gaps, and prioritize what to fix, standardize, or scale.",
+    "pricing": "Pricing: 1,500-3,000 USD per audit.",
+    "status": "new"
+  },
+  {
+    "id": "ai-content-operating-system",
+    "title": "AI Content Operating System",
+    "description": "End-to-end content automation based on your prompt stack: voice cloning, first drafts, thread expansion, repurposing, headline testing, email sequences and SEO briefs.",
+    "pricing": "Pricing: 1,000-3,000 USD setup + 500-1,500 USD/month.",
+    "status": "new"
+  },
+  {
+    "id": "content-repurposing-and-distribution-engine",
+    "title": "Content Repurposing & Distribution Engine",
+    "description": "Turns one long-form asset into platform-specific outputs (X, LinkedIn, Instagram, email teaser) with consistent brand voice and scheduling-ready copy.",
+    "pricing": "Pricing: 500-1,500 USD/month depending on volume.",
+    "status": "new"
+  },
+  {
+    "id": "meeting-and-decision-intelligence",
+    "title": "Meeting & Decision Intelligence",
+    "description": "Automates meeting prep briefs, decision matrices, pre-mortems, reverse brainstorming, and board-of-advisors analysis for leadership teams.",
+    "pricing": "Pricing: 400-1,200 USD/month per team.",
+    "status": "new"
+  },
+  {
+    "id": "sales-outreach-and-proposal-automation",
+    "title": "Sales Outreach & Proposal Automation",
+    "description": "Combines cold outreach personalization, proposal generation, feedback translation and welcome sequence generation into one sales enablement workflow.",
+    "pricing": "Pricing: 600-2,000 USD/month depending on seats and volume.",
+    "status": "new"
+  },
+  {
+    "id": "research-and-competitive-intelligence-suite",
+    "title": "Research & Competitive Intelligence Suite",
+    "description": "Delivers competitor breakdowns, data explainers, book processors, assumption destroyers and strategic opportunity briefs in one analyst workflow.",
+    "pricing": "Pricing: 1,000-2,500 USD/month.",
+    "status": "new"
+  },
+  {
+    "id": "sop-and-delegation-automation",
+    "title": "SOP & Delegation Automation",
+    "description": "Converts tribal knowledge into SOPs, delegation briefs and weekly review systems to reduce bottlenecks and improve team execution.",
+    "pricing": "Pricing: 300-900 USD/month + optional one-time setup.",
+    "status": "new"
+  },
+  {
+    "id": "ai-automation-system-as-a-service",
+    "title": "AI Automation System as a Service",
+    "description": "A unified automation offering that bundles content, research, decision support, sales operations, compliance monitoring and workflow orchestration in one managed service.",
+    "pricing": "Pricing: 2,000-8,000 USD/month depending on scope.",
+    "status": "new"
+  }
+]

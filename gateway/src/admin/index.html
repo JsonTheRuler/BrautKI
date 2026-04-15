@@ -105,6 +105,71 @@
       .ok { color: var(--ok); }
       .bad { color: var(--bad); }
       .warn { color: var(--warn); }
+      .offerings-list {
+        display: grid;
+        gap: 10px;
+      }
+      .offering-item {
+        background: var(--panel-alt);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px;
+      }
+      .offering-item.dragging {
+        opacity: 0.5;
+        border-color: #8db4ff;
+      }
+      .offering-item.drag-over {
+        border-color: #8db4ff;
+      }
+      .offering-item h3 {
+        margin: 0 0 6px;
+        font-size: 15px;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 10px;
+        border-radius: 999px;
+        padding: 2px 8px;
+        margin-left: 6px;
+        vertical-align: middle;
+      }
+      .badge-live {
+        background: rgba(86, 212, 126, 0.2);
+        color: var(--ok);
+      }
+      .badge-new {
+        background: rgba(243, 201, 106, 0.2);
+        color: var(--warn);
+      }
+      .offering-item p {
+        margin: 0 0 6px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      .offering-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .offering-actions button {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+      .inline-input {
+        width: 100%;
+        background: var(--panel-alt);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+        margin-bottom: 8px;
+      }
+      .inline-select {
+        width: 100%;
+        margin-bottom: 8px;
+      }
     </style>
   </head>
   <body>
@@ -129,6 +194,8 @@
           </div>
           <div class="card">
             <h2>Run Actions</h2>
+            <label class="small" for="apiKeyInput">Admin API key (required when SECURE_MODE=true):</label>
+            <input id="apiKeyInput" type="password" style="width:100%;margin:6px 0 10px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--panel-alt);color:var(--text);" placeholder="Paste ADMIN_API_KEY" />
             <div class="row">
               <button onclick="runAction('runInbox')">Run Inbox</button>
               <button onclick="runAction('runCrm')">Run CRM</button>
@@ -164,12 +231,60 @@
               <li>Local Gemma may take time when model is downloading.</li>
             </ul>
           </div>
+          <div class="card">
+            <h2>Offerings</h2>
+            <div class="small" id="offeringStatus">Loading offerings...</div>
+            <div class="row">
+              <button class="secondary" onclick="loadOfferings()">Refresh Offerings</button>
+              <button class="secondary" onclick="toggleArchived()"><span id="archivedToggleLabel">Show Archived: OFF</span></button>
+            </div>
+            <div class="offering-item">
+              <h3>Add New Offering</h3>
+              <input id="newOfferingTitle" class="inline-input" placeholder="Title" />
+              <textarea id="newOfferingDescription" placeholder="Description"></textarea>
+              <input id="newOfferingPricing" class="inline-input" placeholder="Pricing / package" />
+              <select id="newOfferingTier" class="inline-select">
+                <option value="starter">Starter</option>
+                <option value="growth">Growth</option>
+                <option value="scale">Scale</option>
+              </select>
+              <input id="newOfferingDeliverables" class="inline-input" placeholder="Deliverables (one per line using | separator)" />
+              <input id="newOfferingCtaLabel" class="inline-input" placeholder="CTA label (e.g. Book discovery)" />
+              <input id="newOfferingCtaUrl" class="inline-input" placeholder="CTA URL (https://...)" />
+              <select id="newOfferingStatus" class="inline-select">
+                <option value="new">Ny</option>
+                <option value="live">Live</option>
+              </select>
+              <button onclick="createOffering()">Create Offering</button>
+            </div>
+            <div id="offeringsContainer" class="offerings-list"></div>
+          </div>
+          <div class="card">
+            <h2>Offerings Result</h2>
+            <pre id="offeringResultBox">No offering action run yet.</pre>
+          </div>
         </div>
       </div>
     </div>
-
     <script>
       let autoTimer = null;
+      const keyStorageName = "ai-ready-admin-api-key";
+      let offerings = [];
+      let showArchived = false;
+      let draggingOfferingId = null;
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function getApiKey() {
+        return document.getElementById("apiKeyInput").value.trim();
+      }
 
       function parsePayload() {
         const raw = document.getElementById("payloadBox").value.trim();
@@ -182,19 +297,22 @@
         const meta = document.getElementById("healthMeta");
         container.innerHTML = `<div class="small">Checking integrations...</div>`;
         try {
-          const response = await fetch("/admin/integrations/health");
+          const apiKey = getApiKey();
+          const response = await fetch("/admin/integrations/health", {
+            headers: apiKey ? { "x-api-key": apiKey } : {}
+          });
           const body = await response.json();
           meta.textContent = `Last updated: ${new Date(body.generatedAt).toLocaleString()}`;
           container.innerHTML = body.checks.map((c) => `
             <div class="health-item">
-              <div><strong>${c.name}</strong> <span class="status ${c.ok ? "status-ok" : "status-bad"}">${c.ok ? "UP" : "DOWN"}</span></div>
+              <div><strong>${escapeHtml(c.name)}</strong> <span class="status ${c.ok ? "status-ok" : "status-bad"}">${c.ok ? "UP" : "DOWN"}</span></div>
               <div class="small">status=${c.status} | latency=${c.latencyMs}ms</div>
-              <div class="small">${c.base}</div>
-              ${c.error ? `<div class="small bad">${c.error}</div>` : ""}
+              <div class="small">${escapeHtml(c.base)}</div>
+              ${c.error ? `<div class="small bad">${escapeHtml(c.error)}</div>` : ""}
             </div>
           `).join("");
         } catch (error) {
-          container.innerHTML = `<span class="bad">Failed to fetch health: ${error.message}</span>`;
+          container.innerHTML = `<span class="bad">Failed to fetch health: ${escapeHtml(error.message)}</span>`;
         }
       }
 
@@ -203,9 +321,13 @@
         box.textContent = "Running action...";
         try {
           const payload = parsePayload();
+          const apiKey = getApiKey();
           const response = await fetch("/admin/actions/run", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              ...(apiKey ? { "x-api-key": apiKey } : {})
+            },
             body: JSON.stringify({ action, payload })
           });
           const body = await response.json();
@@ -213,6 +335,243 @@
         } catch (error) {
           box.textContent = `Action failed: ${error.message}`;
         }
+      }
+
+      function offeringBadge(status) {
+        return status === "live"
+          ? `<span class="badge badge-live">Live</span>`
+          : `<span class="badge badge-new">Ny</span>`;
+      }
+
+      function setOfferingResult(payload) {
+        document.getElementById("offeringResultBox").textContent = JSON.stringify(payload, null, 2);
+      }
+
+      function escapeAttr(value) {
+        return String(value ?? "").replace(/"/g, "&quot;");
+      }
+
+      function renderOfferings() {
+        const container = document.getElementById("offeringsContainer");
+        if (!offerings.length) {
+          container.innerHTML = `<div class="small">No offerings yet.</div>`;
+          return;
+        }
+        container.innerHTML = offerings.map((item) => `
+          <div class="offering-item" draggable="true" data-offering-id="${item.id}">
+            <h3>${escapeHtml(item.title)} ${offeringBadge(item.status)}</h3>
+            <textarea id="desc-${item.id}">${escapeHtml(item.description)}</textarea>
+            <input id="pricing-${item.id}" class="inline-input" value="${escapeAttr(item.pricing)}" />
+            <select id="tier-${item.id}" class="inline-select">
+              <option value="starter" ${item.tier === "starter" ? "selected" : ""}>Starter</option>
+              <option value="growth" ${item.tier === "growth" ? "selected" : ""}>Growth</option>
+              <option value="scale" ${item.tier === "scale" ? "selected" : ""}>Scale</option>
+            </select>
+            <input id="deliverables-${item.id}" class="inline-input" value="${escapeAttr((item.deliverables || []).join(" | "))}" />
+            <input id="cta-label-${item.id}" class="inline-input" value="${escapeAttr(item.ctaLabel || "Book discovery")}" />
+            <input id="cta-url-${item.id}" class="inline-input" value="${escapeAttr(item.ctaUrl || "")}" />
+            <select id="status-${item.id}" class="inline-select">
+              <option value="live" ${item.status === "live" ? "selected" : ""}>Live</option>
+              <option value="new" ${item.status === "new" ? "selected" : ""}>Ny</option>
+            </select>
+            <div class="small"><a href="${escapeAttr(item.ctaUrl || "#")}" target="_blank">${escapeHtml(item.ctaLabel || "Open CTA")}</a></div>
+            <div class="offering-actions">
+              <button onclick="updateOffering('${item.id}')">Save</button>
+              ${item.archived
+                ? `<button class="secondary" onclick="restoreOffering('${item.id}')">Restore</button>`
+                : `<button class="secondary" onclick="archiveOffering('${item.id}')">Archive</button>`}
+            </div>
+          </div>
+        `).join("");
+        attachDragHandlers();
+      }
+
+      async function loadOfferings() {
+        const status = document.getElementById("offeringStatus");
+        status.textContent = "Loading offerings...";
+        try {
+          const apiKey = getApiKey();
+          const response = await fetch(`/admin/offerings?includeArchived=${showArchived ? "true" : "false"}`, {
+            headers: apiKey ? { "x-api-key": apiKey } : {}
+          });
+          const body = await response.json();
+          offerings = Array.isArray(body.items) ? body.items : [];
+          status.textContent = `Loaded ${offerings.length} offerings`;
+          renderOfferings();
+        } catch (error) {
+          status.textContent = `Failed to load offerings: ${error.message}`;
+        }
+      }
+
+      async function createOffering() {
+        const payload = {
+          title: document.getElementById("newOfferingTitle").value.trim(),
+          description: document.getElementById("newOfferingDescription").value.trim(),
+          pricing: document.getElementById("newOfferingPricing").value.trim(),
+          tier: document.getElementById("newOfferingTier").value,
+          deliverables: document.getElementById("newOfferingDeliverables").value.split("|").map((x) => x.trim()).filter(Boolean),
+          ctaLabel: document.getElementById("newOfferingCtaLabel").value.trim(),
+          ctaUrl: document.getElementById("newOfferingCtaUrl").value.trim(),
+          status: document.getElementById("newOfferingStatus").value
+        };
+        try {
+          const apiKey = getApiKey();
+          const response = await fetch("/admin/offerings", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(apiKey ? { "x-api-key": apiKey } : {})
+            },
+            body: JSON.stringify(payload)
+          });
+          const body = response.status === 204 ? {} : await response.json();
+          setOfferingResult({ status: response.status, body });
+          if (response.ok) {
+            document.getElementById("newOfferingTitle").value = "";
+            document.getElementById("newOfferingDescription").value = "";
+            document.getElementById("newOfferingPricing").value = "";
+            document.getElementById("newOfferingTier").value = "starter";
+            document.getElementById("newOfferingDeliverables").value = "";
+            document.getElementById("newOfferingCtaLabel").value = "";
+            document.getElementById("newOfferingCtaUrl").value = "";
+            document.getElementById("newOfferingStatus").value = "new";
+            await loadOfferings();
+          }
+        } catch (error) {
+          setOfferingResult({ error: error.message });
+        }
+      }
+
+      async function updateOffering(id) {
+        const payload = {
+          description: document.getElementById(`desc-${id}`).value.trim(),
+          pricing: document.getElementById(`pricing-${id}`).value.trim(),
+          tier: document.getElementById(`tier-${id}`).value,
+          deliverables: document.getElementById(`deliverables-${id}`).value.split("|").map((x) => x.trim()).filter(Boolean),
+          ctaLabel: document.getElementById(`cta-label-${id}`).value.trim(),
+          ctaUrl: document.getElementById(`cta-url-${id}`).value.trim(),
+          status: document.getElementById(`status-${id}`).value
+        };
+        try {
+          const apiKey = getApiKey();
+          const response = await fetch(`/admin/offerings/${id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              ...(apiKey ? { "x-api-key": apiKey } : {})
+            },
+            body: JSON.stringify(payload)
+          });
+          const body = response.status === 204 ? {} : await response.json();
+          setOfferingResult({ status: response.status, body });
+          if (response.ok) {
+            await loadOfferings();
+          }
+        } catch (error) {
+          setOfferingResult({ error: error.message });
+        }
+      }
+
+      async function archiveOffering(id) {
+        if (!confirm("Archive this offering?")) return;
+        try {
+          const apiKey = getApiKey();
+          const response = await fetch(`/admin/offerings/${id}`, {
+            method: "DELETE",
+            headers: apiKey ? { "x-api-key": apiKey } : {}
+          });
+          const body = response.status === 204 ? {} : await response.json();
+          setOfferingResult({ status: response.status, body });
+          if (response.ok) {
+            await loadOfferings();
+          }
+        } catch (error) {
+          setOfferingResult({ error: error.message });
+        }
+      }
+
+      async function restoreOffering(id) {
+        try {
+          const apiKey = getApiKey();
+          const response = await fetch(`/admin/offerings/${id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              ...(apiKey ? { "x-api-key": apiKey } : {})
+            },
+            body: JSON.stringify({ archived: false })
+          });
+          const body = response.status === 204 ? {} : await response.json();
+          setOfferingResult({ status: response.status, body });
+          if (response.ok) {
+            await loadOfferings();
+          }
+        } catch (error) {
+          setOfferingResult({ error: error.message });
+        }
+      }
+
+      async function reorderOfferings(ids) {
+        try {
+          const apiKey = getApiKey();
+          const response = await fetch("/admin/offerings/reorder", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(apiKey ? { "x-api-key": apiKey } : {})
+            },
+            body: JSON.stringify({ ids })
+          });
+          const body = await response.json();
+          setOfferingResult({ status: response.status, body });
+          if (response.ok) {
+            offerings = body.items || offerings;
+            renderOfferings();
+          }
+        } catch (error) {
+          setOfferingResult({ error: error.message });
+        }
+      }
+
+      function attachDragHandlers() {
+        const items = [...document.querySelectorAll(".offering-item[data-offering-id]")];
+        items.forEach((item) => {
+          item.addEventListener("dragstart", (event) => {
+            draggingOfferingId = item.dataset.offeringId;
+            item.classList.add("dragging");
+            event.dataTransfer.effectAllowed = "move";
+          });
+          item.addEventListener("dragend", () => {
+            item.classList.remove("dragging");
+            items.forEach((node) => node.classList.remove("drag-over"));
+          });
+          item.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            item.classList.add("drag-over");
+          });
+          item.addEventListener("dragleave", () => {
+            item.classList.remove("drag-over");
+          });
+          item.addEventListener("drop", async (event) => {
+            event.preventDefault();
+            item.classList.remove("drag-over");
+            const targetId = item.dataset.offeringId;
+            if (!draggingOfferingId || !targetId || draggingOfferingId === targetId) return;
+            const orderedIds = offerings.map((entry) => entry.id);
+            const from = orderedIds.indexOf(draggingOfferingId);
+            const to = orderedIds.indexOf(targetId);
+            if (from < 0 || to < 0) return;
+            const [moved] = orderedIds.splice(from, 1);
+            orderedIds.splice(to, 0, moved);
+            await reorderOfferings(orderedIds);
+          });
+        });
+      }
+
+      function toggleArchived() {
+        showArchived = !showArchived;
+        document.getElementById("archivedToggleLabel").textContent = `Show Archived: ${showArchived ? "ON" : "OFF"}`;
+        loadOfferings();
       }
 
       function toggleAutoRefresh() {
@@ -229,6 +588,14 @@
       }
 
       refreshHealth();
+      loadOfferings();
+      const saved = sessionStorage.getItem(keyStorageName);
+      if (saved) {
+        document.getElementById("apiKeyInput").value = saved;
+      }
+      document.getElementById("apiKeyInput").addEventListener("change", (e) => {
+        sessionStorage.setItem(keyStorageName, e.target.value);
+      });
     </script>
   </body>
 </html>

@@ -22,6 +22,7 @@ dependencies = [
 [project.scripts]
 agents-api = "agents.api:main"
 inbox-agent-test = "agents.scripts.test_inbox_agent:main"
+core-agents-test = "agents.scripts.test_core_agents:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

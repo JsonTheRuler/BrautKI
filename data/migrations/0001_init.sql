@@ -24,12 +24,14 @@ CREATE TABLE IF NOT EXISTS emails (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   from_address VARCHAR(255) NOT NULL,
   to_address VARCHAR(255) NOT NULL,
+  provider_id VARCHAR(255) NOT NULL,
   subject VARCHAR(500) NOT NULL,
   body TEXT NOT NULL,
   labels JSONB NOT NULL DEFAULT '{}'::jsonb,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uq_emails_provider_id ON emails(provider_id);
 
 CREATE TABLE IF NOT EXISTS leads (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

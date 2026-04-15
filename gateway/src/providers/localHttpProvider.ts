@@ -1,5 +1,6 @@
 import type { ChatCompletionRequest, ChatCompletionResponse } from "../types/openai.js";
 import type { ModelConfig, Provider } from "./base.js";
+import { fetchWithRetry } from "./httpClient.js";
 
 export class LocalHttpProvider implements Provider {
   async complete(req: ChatCompletionRequest, cfg: ModelConfig): Promise<ChatCompletionResponse> {
@@ -8,7 +9,7 @@ export class LocalHttpProvider implements Provider {
     }
 
     const url = new URL(cfg.path, cfg.baseUrl).toString();
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

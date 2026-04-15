@@ -1,12 +1,13 @@
 import type { ChatCompletionRequest, ChatCompletionResponse } from "../types/openai.js";
 import type { ModelConfig, Provider } from "./base.js";
+import { fetchWithRetry } from "./httpClient.js";
 
 export class OpenRouterProvider implements Provider {
   async complete(req: ChatCompletionRequest, cfg: ModelConfig): Promise<ChatCompletionResponse> {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) throw new Error("OPENROUTER_API_KEY is missing.");
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetchWithRetry("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

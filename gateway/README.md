@@ -27,6 +27,15 @@ Add API keys in `.env`:
 - `ANTHROPIC_API_KEY`
 - `OPENROUTER_API_KEY`
 
+Security flags:
+
+- `SECURE_MODE=true` to enforce API-key auth and route rate-limits
+- `GATEWAY_API_KEY=<key>` for `/v1/chat/completions`
+- `ADMIN_API_KEY=<key>` for `/admin` + `/admin/*` APIs
+- `SERVICE_SHARED_KEY=<key>` used when gateway calls agents/council services
+- `DOWNSTREAM_TIMEOUT_MS=20000` timeout for downstream service calls
+- `DOWNSTREAM_RETRIES=2` retry attempts for transient failures
+
 ## 2) Run
 
 ```bash
@@ -39,11 +48,18 @@ Health check:
 curl http://localhost:4000/health
 ```
 
+Readiness check:
+
+```bash
+curl http://localhost:4000/ready
+```
+
 ## 3) Call the gateway
 
 ```bash
 curl -X POST http://localhost:4000/v1/chat/completions \
   -H "Content-Type: application/json" \
+  -H "x-api-key: <GATEWAY_API_KEY_IF_SECURE_MODE>" \
   -d '{
     "model": "reasoning-primary",
     "messages": [{"role":"user","content":"Give me a 2-line AI operations summary."}],
@@ -57,6 +73,7 @@ Try another alias:
 ```bash
 curl -X POST http://localhost:4000/v1/chat/completions \
   -H "Content-Type: application/json" \
+  -H "x-api-key: <GATEWAY_API_KEY_IF_SECURE_MODE>" \
   -d '{
     "model": "fast-cheap",
     "messages": [{"role":"user","content":"Give me two bullet points on automation."}]
@@ -76,6 +93,7 @@ This sends one request to `reasoning-primary` and one to `fast-cheap`.
 The gateway now serves a lightweight admin page:
 
 - URL: `http://localhost:4000/admin`
+- Header when secure mode enabled: `x-api-key: <ADMIN_API_KEY>`
 
 It provides:
 - integration health checks (gateway, agents, council, n8n, local model wrappers)

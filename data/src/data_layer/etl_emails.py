@@ -1,51 +1,47 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Iterable
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .config import settings
+from .connectors.graph_connector import ConnectorEmail as GraphEmail
+from .connectors.graph_connector import fetch_emails_graph
+from .connectors.imap_connector import ConnectorEmail as ImapEmail
+from .connectors.imap_connector import fetch_emails_imap
+from .connectors.mock_connector import ConnectorEmail as MockEmail
+from .connectors.mock_connector import fetch_emails_mock
 from .db import SessionLocal
 from .gateway_client import fetch_embedding_via_gateway
 from .models import Document, DocumentEmbedding, Email
 
 
-@dataclass
-class IncomingEmail:
-    from_address: str
-    to_address: str
-    subject: str
-    body: str
-    provider_id: str
+IncomingEmail = MockEmail | ImapEmail | GraphEmail
 
 
 def fetch_inbox_emails() -> Iterable[IncomingEmail]:
-    """
-    TODO: replace with IMAP or Microsoft Graph integration.
-    Keep output shape stable so this ETL remains unchanged.
-    """
-    return [
-        IncomingEmail(
-            from_address="ceo@client.no",
-            to_address="hello@aiready.no",
-            subject="Need AI readiness workshop",
-            body="We want a 2-day workshop for our leadership team in May.",
-            provider_id="mock-001",
-        ),
-        IncomingEmail(
-            from_address="ops@prospect.no",
-            to_address="hello@aiready.no",
-            subject="Can you automate inbox triage?",
-            body="Looking for help with shared mailbox processing and CRM sync.",
-            provider_id="mock-002",
-        ),
-    ]
+    source = settings.email_source.lower().strip()
+    if source == "imap":
+        return fetch_emails_imap()
+    if source == "graph":
+        return fetch_emails_graph()
+    return fetch_emails_mock()
+
+
+def email_exists(db: Session, provider_id: str) -> bool:
+    existing = db.execute(select(Email.id).where(Email.provider_id == provider_id)).first()
+    return existing is not None
 
 
 def persist_email_and_document(db: Session, email: IncomingEmail) -> None:
+    if email_exists(db, email.provider_id):
+        return
+
     email_row = Email(
         from_address=email.from_address,
         to_address=email.to_address,
+        provider_id=email.provider_id,
         subject=email.subject,
         body=email.body,
         labels={"status": "new"},
@@ -73,11 +69,16 @@ def persist_email_and_document(db: Session, email: IncomingEmail) -> None:
 
 
 def run() -> None:
+    inserted = 0
     with SessionLocal() as db:
         for incoming in fetch_inbox_emails():
+            before_count = db.execute(select(Email.id).where(Email.provider_id == incoming.provider_id)).first()
             persist_email_and_document(db, incoming)
+            after_count = db.execute(select(Email.id).where(Email.provider_id == incoming.provider_id)).first()
+            if before_count is None and after_count is not None:
+                inserted += 1
         db.commit()
-    print("ETL complete: emails + documents + embeddings stored.")
+    print(f"ETL complete: inserted={inserted} (dedup enabled by provider_id).")
 
 
 if __name__ == "__main__":

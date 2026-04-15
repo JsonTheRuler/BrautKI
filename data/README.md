@@ -2,12 +2,14 @@
 
 Python package for Postgres + pgvector models and ETL.
 
-## Phase 2 decisions
+## Phase 4 data hardening
 
 - Main DB: Postgres
 - Vector store: pgvector (in the same Postgres instance)
 - ORM: SQLAlchemy 2.x
-- Migration strategy: SQL migration files in `data/migrations/` (starting with `0001_init.sql`)
+- Migration strategy: Alembic revisions in `data/alembic/versions/` (plus SQL bootstrap file).
+- ETL dedup: `emails.provider_id` unique key prevents duplicate ingest.
+- Connectors: source-selectable email connectors (`mock`, `imap`, `graph`).
 
 ## Schema
 
@@ -32,10 +34,16 @@ Set environment variables:
 - `EMBEDDING_MODEL_ALIAS=fast-cheap`
 - `EMBEDDING_DIMENSIONS=16`
 
-Apply migration:
+Apply migration (quick SQL bootstrap):
 
 ```bash
 psql "postgresql://postgres:postgres@localhost:5432/ai_ready" -f migrations/0001_init.sql
+```
+
+Or use Alembic (recommended):
+
+```bash
+alembic -c alembic.ini upgrade head
 ```
 
 Run ETL:
@@ -46,9 +54,24 @@ python -m data_layer.etl_emails
 
 ## ETL notes
 
-- `etl_emails.py` currently uses mocked inbox data.
-- TODO marker included where IMAP / Microsoft Graph credentials should be wired.
+- Set `EMAIL_SOURCE=mock|imap|graph`.
+- IMAP and Graph connectors are explicit stubs with TODOs and credential placeholders.
 - Embeddings are requested through the gateway alias in `EMBEDDING_MODEL_ALIAS`.
+- Re-running ETL is safe for the same `provider_id` entries.
+
+## Connector environment variables
+
+- `EMAIL_SOURCE=mock|imap|graph`
+- IMAP:
+  - `IMAP_HOST`
+  - `IMAP_PORT` (default 993)
+  - `IMAP_USERNAME`
+  - `IMAP_PASSWORD`
+- Graph:
+  - `GRAPH_TENANT_ID`
+  - `GRAPH_CLIENT_ID`
+  - `GRAPH_CLIENT_SECRET`
+  - `GRAPH_MAILBOX_USER`
 
 ## Use from agents
 

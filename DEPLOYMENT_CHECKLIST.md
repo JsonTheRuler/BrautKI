@@ -43,7 +43,20 @@ Use this checklist before each production rollout.
 
 ## 6) Release controls
 
-- [ ] All tests and smoke checks pass.
+- [ ] All tests and smoke checks pass (`python scripts/release_smoke.py`).
 - [ ] Changelog / release notes updated.
 - [ ] Git tag created for release.
 - [ ] Rollback plan documented (previous tag + restore steps).
+
+## 7) CI controls
+
+- [ ] GitHub Actions workflow `CI` passed on branch/PR.
+- [ ] No failed checks in `gateway-build` job.
+- [ ] No failed checks in `python-services` job.
+
+## 8) Secret and environment controls
+
+- [ ] Service env files created from each `.env.example`.
+- [ ] `python scripts/env_preflight.py --service all` passes.
+- [ ] Preview and Production Vercel environments use separate secret values.
+- [ ] `SERVICE_SHARED_KEY` rotated and not reused across environments.

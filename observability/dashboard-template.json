@@ -1,0 +1,37 @@
+{
+  "title": "AI Ready Operations Dashboard",
+  "panels": [
+    {
+      "name": "Gateway Counters",
+      "source": "GET /metrics on gateway",
+      "keys": [
+        "counters.requestsTotal",
+        "counters.chatCompletionsTotal",
+        "counters.chatCompletionsFailed",
+        "counters.authFailures",
+        "counters.rateLimited"
+      ]
+    },
+    {
+      "name": "Agents Counters",
+      "source": "GET /metrics on agents",
+      "keys": [
+        "counters.requestsTotal",
+        "counters.authFailures",
+        "counters.inboxRuns",
+        "counters.crmRuns",
+        "counters.marketingRuns",
+        "counters.deliveryRuns"
+      ]
+    },
+    {
+      "name": "Council Counters",
+      "source": "GET /metrics on llm-council",
+      "keys": [
+        "counters.requestsTotal",
+        "counters.authFailures",
+        "counters.councilDecisions"
+      ]
+    }
+  ]
+}

@@ -2,18 +2,20 @@
 
 Python LangGraph/FastAPI services for AI Ready.
 
-## Implemented in Phase 3
+## Implemented through Batch 5
 
 - Inbox agent implemented end-to-end as a LangGraph workflow.
-- CRM, Marketing, and Delivery agents scaffolded as LangGraph skeletons with TODOs.
-- HTTP API added so n8n/Paperclip can call each agent.
+- CRM agent implemented with lead enrichment + ICP scoring contract.
+- Marketing agent implemented with channel draft generation contract.
+- Delivery agent implemented with validated draft report + optional council review.
+- HTTP API supports all agents for n8n/Paperclip orchestration.
 
 ## Project layout
 
 - `src/agents/graphs/inbox_agent.py` - working Inbox graph.
-- `src/agents/graphs/crm_agent.py` - CRM skeleton graph.
-- `src/agents/graphs/marketing_agent.py` - Marketing skeleton graph.
-- `src/agents/graphs/delivery_agent.py` - Delivery skeleton graph.
+- `src/agents/graphs/crm_agent.py` - CRM workflow (fetch -> enrich/score -> format/validate).
+- `src/agents/graphs/marketing_agent.py` - Marketing workflow (assets -> draft generation -> validate).
+- `src/agents/graphs/delivery_agent.py` - Delivery workflow (inputs -> draft -> optional council review).
 - `src/agents/tools/inbox_tools.py` - `get_recent_emails`, `get_calendar_events`, `save_draft_reply`.
 - `src/agents/gateway_client.py` - all LLM calls routed through gateway.
 - `src/agents/api.py` - FastAPI endpoints.
@@ -24,6 +26,8 @@ Python LangGraph/FastAPI services for AI Ready.
 Set these variables before running:
 
 - `GATEWAY_URL=http://localhost:4000`
+- `SECURE_MODE=false`
+- `SERVICE_SHARED_KEY=` (required when `SECURE_MODE=true`)
 - `REASONING_MODEL_ALIAS=reasoning-primary`
 - `COUNCIL_MODEL_ALIAS=council-meta`
 - `ENABLE_COUNCIL_REVIEW=false`
@@ -44,10 +48,11 @@ agents-api
 API base: `http://localhost:8010`
 
 - `GET /health`
+- `GET /ready`
 - `POST /agents/inbox/run`
-- `POST /agents/crm/run` (skeleton)
-- `POST /agents/marketing/run` (skeleton)
-- `POST /agents/delivery/run` (skeleton)
+- `POST /agents/crm/run`
+- `POST /agents/marketing/run`
+- `POST /agents/delivery/run`
 
 ## Inbox agent test
 
@@ -81,3 +86,13 @@ LangGraph nodes:
    - persists draft replies via `save_draft_reply()`
 
 All LLM model calls go through the gateway alias defined by `REASONING_MODEL_ALIAS`.
+
+## Core agent test (Batch 5)
+
+```bash
+cd agents
+. .venv/Scripts/activate
+core-agents-test
+```
+
+This validates CRM/Marketing/Delivery output contracts and fallback behavior.
